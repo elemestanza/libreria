@@ -12,4 +12,11 @@ int head(int N){
 		printf("%s", buf);
 		cuenta++;
 	}
+	return 0;
+}
+
+int tail(int N){
+}
+
+int longlines(int N){
 }
