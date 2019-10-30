@@ -4,13 +4,15 @@
 
 int myhead (int argc, char *arg){
 	//Función que realizará el HEAD
-	if (argc == 0) head(10) ;
-	if (argc == 1) head(atoi(arg)) ;
+	if (argc == 0) head(10);
+	if (argc == 1) head(atoi(arg));
 	return 0;
 }
 
 int mytail (int argc, char *arg){
 	//Función que realizará el TAIL
+	if (argc == 0) tail(10);
+	if (argc == 1) tail(atoi(arg));
 	return 0;
 }
 
