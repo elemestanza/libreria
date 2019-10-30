@@ -1,0 +1,7 @@
+char **lineas = (char **) malloc (N * sizeof(char *));
+
+for (int i = 0; i < N; i++){
+	lineas[i] = (char *) malloc (sizeof(char) * 1024);
+}
+
+La línea que se va tiene que hacer free.
