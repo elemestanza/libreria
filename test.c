@@ -18,6 +18,7 @@ int mytail (int argc, char *arg){
 
 int mylonglines (int numerolineas){
 	//Función que realizará el LONGLINES
+	longlines(numerolineas);
 	return 0;
 }
 
