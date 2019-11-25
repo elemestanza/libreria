@@ -9,6 +9,8 @@
 
 #define PROMPT = "msh> "
 
+pid_t *hijos; //Para almacenar los pids de los hijos
+
 void primero (tcommand command){
 
 }
@@ -40,10 +42,17 @@ int main(){
     	}
 
 	//Segunda declaración de variables
-	int p1[2], p2[2], pid;
+	int i, p1[2], p2[2];
+	pid_t pid;
+	int numcomandos = line->ncommands;
+
+	hijos = malloc(numcomandos * sizeof(pid_t)); //Crea el espacio para guardar los pids de los hijos
+	for (i = 0, i < numcomandos, i++) hijos[i] = 0;
+
+	//¿Cómo sabemos donde hay que hacer la redirección?
 
 	pipe(p1);
-	pipe(p2);
+	pipe(p2); //Si la salida de la 2 se conecta a la entrada de la 1, todos los hijos (excepto el primero) recibirán información de la tubería 1
 
 	pid = fork();
 	if (pid == 0){ //primero
