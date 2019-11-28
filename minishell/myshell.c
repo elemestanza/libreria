@@ -1,10 +1,10 @@
-#import <signal.h>
-#import <stdio.h>
-#import <stdlib.h>
-#import <sys/types.h>
-#import <sys/wait.h>
-#import <unistd.h>
-#import "parser.h"
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include "parser.h"
 
 int main(){
 
@@ -37,9 +37,10 @@ int main(){
 		close(p1[1]);
 		close(p2[0]);
 		dup2(p2[1], 1);
-		//if (line->redirect_input != NULL) dup2(0, line->redirect_input); //Redirección de entrada
+		if (line->redirect_input != NULL) dup2(0, line->redirect_input); //Redirección de entrada
 
-		execvp(line->commands[0].argv[0], line->commands[i+1].argv + 1);
+		execvp(line->commands[0].argv[0], line->commands[0].argv +1);
+
 	} else {
 		for (i = 0; i < numcomandos-2; i++){ //los hijos del medio
 			pid = fork(); //Tú vas a leer de p2[0] y vas a escribir en p1[1];
@@ -49,7 +50,7 @@ int main(){
 				dup2(p2[0], 0);
 				dup2(p1[1], 1);
 
-				execvp(line->commands[i+1].argv[0], line->commands[i+1].argv + 1);
+				execvp(line->commands[i+1].argv[0], line->commands[i+1].argv + 1 );
 				dup2(p2[1], p1[1]);
 			}
 		}
@@ -60,10 +61,10 @@ int main(){
 			close(p2[1]);
 			dup2(p2[0], 0);
 
-			execvp(line->commands[numcomandos-1].argv[0], line->commands[numcomandos-1].argv + 1);
+			execvp(line->commands[numcomandos-1].argv[0], line->commands[numcomandos-1].argv +1);
 
-			//if (line->redirect_output != NULL) dup2(1, line->redirect_output); //Redirección de salida
-			//if (line->redirect_error != NULL) dup2(2, line->redirect_error); //Redirección de error
+			if (line->redirect_output != NULL) dup2(1, line->redirect_output); //Redirección de salida
+			if (line->redirect_error != NULL) dup2(2, line->redirect_error); //Redirección de error
 		} else { //padre
 			close(p1[0]);
 			close(p1[1]);
