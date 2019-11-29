@@ -40,12 +40,14 @@ int main(){
 		pid = fork();
 		if (pid == 0){ //primero
 			close(pipes[0][0]);
+			dup2(pipes[0][1], 1);
 			for (i = 1; i < numcomandos-2; i++){
 				close(pipes[i][0]);
 				close(pipes[i][1]);
 			}
-			dup2(pipes[0][1], 1);
-			if (line->redirect_input != NULL) dup2(0, line->redirect_input); //Redirección de entrada [CAMBIAR REDIRECCIÓN COMO ABAJO]
+			
+			input = open(line->redirect_input);
+			if (line->redirect_input != NULL) dup2(input, 0); //Redirección de entrada
 
 			execvp(line->commands[0].argv[0], line->commands[0].argv + 1);
 			exit(1);
@@ -53,10 +55,18 @@ int main(){
 			for (i = 0; i < numcomandos-2; i++){ //los hijos del medio
 				pid = fork();
 				if (pid == 0){
-					close(p1[0]);
-					close(p2[1]);
-					dup2(p2[0], 0);
-					dup2(p1[1], 1);
+					for (j = 0; j < i; j++){
+						close(pipes[j][0]);
+						close(pipes[j][1]);
+					}
+					dup2(pipes[i][0], 0);
+					close(pipes[i][1]);
+					close(pipes[i+1][0]);
+					dup2(pipes[i+1][1], 1);
+					for (j = i+2; j < numcomandos-2; j++){
+						close(pipes[j][0]);
+						close(pipes[j][1]);
+					}
 
 					execvp(line->commands[i+1].argv[0], line->commands[i+1].argv + 1);
 					exit(1);
