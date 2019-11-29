@@ -24,55 +24,70 @@ int main(){
     	}
 
 	//Segunda declaración de variables
-	int i, p1[2], p2[2];
-	pid_t pid;
+	int i, j;
+	int *pipes[2];
+	pid_t pid, input, output, error;
 	int numcomandos = line->ncommands;
 
-	pipe(p1);
-	pipe(p2); //Si la salida de la 2 se conecta a la entrada de la 1, todos los hijos (excepto el primero) recibirán información de la tubería 1
+	pipes = malloc ((numcomandos - 1) * sizeof(int * 2));
+	for (i = 0; i < numcomandos-1; i++) pipe(pipes[i]);
 
-	pid = fork();
-	if (pid == 0){ //primero
-		close(p1[0]);
-		close(p1[1]);
-		close(p2[0]);
-		dup2(p2[1], 1);
-		if (line->redirect_input != NULL) dup2(0, line->redirect_input); //Redirección de entrada
+	//Diferenciar caso de 1 comando a más de 1
 
-		execvp(line->commands[0].argv[0], line->commands[0].argv +1);
+	if (numcomandos == 1){ //Un comando
 
-	} else {
-		for (i = 0; i < numcomandos-2; i++){ //los hijos del medio
-			pid = fork(); //Tú vas a leer de p2[0] y vas a escribir en p1[1];
-			if (pid == 0){
-				close(p1[0]);
-				close(p2[1]);
-				dup2(p2[0], 0);
-				dup2(p1[1], 1);
-
-				execvp(line->commands[i+1].argv[0], line->commands[i+1].argv + 1 );
-				dup2(p2[1], p1[1]);
-			}
-		}
+	} else { //Más de un comando
 		pid = fork();
-		if (pid == 0){ //último: lee de p2[0]
-			close(p1[0]);
-			close(p1[1]);
-			close(p2[1]);
-			dup2(p2[0], 0);
+		if (pid == 0){ //primero
+			close(pipes[0][0]);
+			for (i = 1; i < numcomandos-2; i++){
+				close(pipes[i][0]);
+				close(pipes[i][1]);
+			}
+			dup2(pipes[0][1], 1);
+			if (line->redirect_input != NULL) dup2(0, line->redirect_input); //Redirección de entrada [CAMBIAR REDIRECCIÓN COMO ABAJO]
 
-			execvp(line->commands[numcomandos-1].argv[0], line->commands[numcomandos-1].argv +1);
+			execvp(line->commands[0].argv[0], line->commands[0].argv + 1);
+			exit(1);
+		} else {
+			for (i = 0; i < numcomandos-2; i++){ //los hijos del medio
+				pid = fork();
+				if (pid == 0){
+					close(p1[0]);
+					close(p2[1]);
+					dup2(p2[0], 0);
+					dup2(p1[1], 1);
 
-			if (line->redirect_output != NULL) dup2(1, line->redirect_output); //Redirección de salida
-			if (line->redirect_error != NULL) dup2(2, line->redirect_error); //Redirección de error
-		} else { //padre
-			close(p1[0]);
-			close(p1[1]);
-			close(p2[0]);
-			close(p2[1]);
+					execvp(line->commands[i+1].argv[0], line->commands[i+1].argv + 1);
+					exit(1);
+				}
+			}
+			pid = fork();
+			if (pid == 0){ //último
+				for (i = 0; i < numcomandos-2; i++){
+					close(pipes[i][0]);
+					close(pipes[i][1]);
+				}
+				dup2(pipes[numcomandos-2][0], 0);
+				close(pipes[numcomandos-2][1]);
 
-			for (i = 0; i < numcomandos; i++) wait(NULL); //Espera a todos los hijos
-			exit(0);
+				execvp(line->commands[numcomandos-1].argv[0], line->commands[numcomandos-1].argv +1);
+				exit(1);
+
+				output = open(line->redirect_output);
+				error = open(line->redirect_error);
+
+				if (line->redirect_output != NULL) dup2(output, 1); //Redirección de salida
+				if (line->redirect_error != NULL) dup2(error, 2); //Redirección de error
+			} else { //padre
+				close(p1[0]);
+				close(p1[1]);
+				close(p2[0]);
+				close(p2[1]);
+
+				for (i = 0; i < numcomandos; i++) wait(NULL); //Espera a todos los hijos
+				exit(0);
+			}
 		}
 	}
 }
