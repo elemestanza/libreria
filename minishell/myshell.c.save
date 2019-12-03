@@ -29,21 +29,12 @@ int main(){
 	pid_t pid, input, output, error;
 	int numcomandos = line->ncommands;
 
-	pipes[i] = malloc ((numcomandos - 1) * sizeof(int[2]));
+	pipes = malloc ((numcomandos - 1) * sizeof(int * 2));
 	for (i = 0; i < numcomandos-1; i++) pipe(pipes[i]);
 
 	//Diferenciar caso de 1 comando a más de 1
 
 	if (numcomandos == 1){ //Un comando
-
-		pid = fork();
-		if (pid == 0){
-			execvp(line->commands[0].argv[0], line->commands[0].argv + 1);
-			exit(1);
-		} else{
-			wait(NULL);
-			exit(0);
-		}
 
 	} else { //Más de un comando
 		pid = fork();
@@ -54,9 +45,9 @@ int main(){
 				close(pipes[i][0]);
 				close(pipes[i][1]);
 			}
-
-			//input = open(line->redirect_input);
-			//if (line->redirect_input != NULL) dup2(input, 0); //Redirección de entrada
+			
+			input = open(line->redirect_input);
+			if (line->redirect_input != NULL) dup2(input, 0); //Redirección de entrada
 
 			execvp(line->commands[0].argv[0], line->commands[0].argv + 1);
 			exit(1);
@@ -67,6 +58,8 @@ int main(){
 					for (j = 0; j < i; j++){
 						close(pipes[j][0]);
 						close(pipes[j][1]);
+
+
 					}
 					dup2(pipes[i][0], 0);
 					close(pipes[i][1]);
@@ -93,16 +86,16 @@ int main(){
 				execvp(line->commands[numcomandos-1].argv[0], line->commands[numcomandos-1].argv +1);
 				exit(1);
 
-				//output = open(line->redirect_output);
-				//error = open(line->redirect_error);
+				output = open(line->redirect_output);
+				error = open(line->redirect_error);
 
-				//if (line->redirect_output != NULL) dup2(output, 1); //Redirección de salida
-				//if (line->redirect_error != NULL) dup2(error, 2); //Redirección de error
+				if (line->redirect_output != NULL) dup2(output, 1); //Redirección de salida
+				if (line->redirect_error != NULL) dup2(error, 2); //Redirección de error
 			} else { //padre
-				for (i =0; i> numcomandos-1; i++){
-					close(pipes[i][0]);
-					close(pipes[i][1]);
-				}
+				close(p1[0]);
+				close(p1[1]);
+				close(p2[0]);
+				close(p2[1]);
 
 				for (i = 0; i < numcomandos; i++) wait(NULL); //Espera a todos los hijos
 				exit(0);
