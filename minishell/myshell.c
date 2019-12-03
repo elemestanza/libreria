@@ -12,6 +12,10 @@ int main(){
     	char buf[1024];
     	int control = 1;
    	tline * line;
+	int i, j;
+        int *pipes[2];
+        pid_t pid, input, output, error;
+        
 
     	//Obtención de línea
     	while (control != 0){
@@ -21,12 +25,9 @@ int main(){
 
         	if (line == NULL) control = 0;
         	else printf("\n");
-    	}
+    	
 
 	//Segunda declaración de variables
-	int i, j;
-	int *pipes[2];
-	pid_t pid, input, output, error;
 	int numcomandos = line->ncommands;
 
 	pipes[i] = malloc ((numcomandos - 1) * sizeof(int[2]));
@@ -38,11 +39,11 @@ int main(){
 
 		pid = fork();
 		if (pid == 0){
-			execvp(line->commands[0].argv[0], line->commands[0].argv + 1);
+			execvp(line->commands[0].argv[0], line->commands[0].argv);
 			exit(1);
 		} else{
-			wait(NULL);
-			exit(0);
+			waitpid(pid, NULL, 0);
+			
 		}
 
 	} else { //Más de un comando
@@ -104,9 +105,10 @@ int main(){
 					close(pipes[i][1]);
 				}
 
-				for (i = 0; i < numcomandos; i++) wait(NULL); //Espera a todos los hijos
+				for (i = 0; i < numcomandos; i++) waitpid(pid, NULL, 0); //Espera a todos los hijos
 				exit(0);
 			}
 		}
 	}
+}
 }
