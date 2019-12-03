@@ -13,9 +13,8 @@ int main(){
     	int control = 1;
    	tline * line;
 	int i, j;
-        int *pipes[2];
         pid_t pid, input, output, error;
-        
+        int **pipes;
 
     	//Obtención de línea
     	while (control != 0){
@@ -25,15 +24,16 @@ int main(){
 
         	if (line == NULL) control = 0;
         	else printf("\n");
-    	
 
 	//Segunda declaración de variables
 	int numcomandos = line->ncommands;
 
-	pipes[i] = malloc ((numcomandos - 1) * sizeof(int[2]));
+	pipes = (int **) malloc ((numcomandos-1) * sizeof(int*));
+	for (i = 0; i < numcomandos-1; i++){
+		pipes[i] = (int *) malloc (2 * sizeof(int));
+	}
+	
 	for (i = 0; i < numcomandos-1; i++) pipe(pipes[i]);
-
-	//Diferenciar caso de 1 comando a más de 1
 
 	if (numcomandos == 1){ //Un comando
 
@@ -41,10 +41,7 @@ int main(){
 		if (pid == 0){
 			execvp(line->commands[0].argv[0], line->commands[0].argv);
 			exit(1);
-		} else{
-			waitpid(pid, NULL, 0);
-			
-		}
+		} else waitpid(pid, NULL, 0);
 
 	} else { //Más de un comando
 		pid = fork();
