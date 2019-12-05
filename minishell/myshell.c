@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
@@ -8,9 +9,16 @@
 #include <unistd.h>
 #include "parser.h"
 
-void cd(char *dir){
+int cd(char *dir){
+	int err;
+
 	if (dir == NULL) chdir(getenv("HOME"));
-	else chdir(dir);
+	else {
+		err = chdir(dir);
+		if (err == -1) return 1;
+	}
+
+	return 0;
 }
 
 
@@ -20,19 +28,17 @@ int main(void){
     	//Declaración de variables
     	char buf[1024];
    	tline * line;
-	int i, j, numcomandos;
+	int i, j, numcomandos, err;
         pid_t pidunico, input, output, error;
         int **pipes;
         pid_t *pid;
 
 
-    	printf("msh> ");
+    	printf("msh> "); //Prompt
     	while (fgets(buf, 1024, stdin)){
         	line = tokenize(buf);
 
-	
-
-        	//if (line == NULL) continue;
+		//Si no se ha escrito nada, muestra el prompt y vuelta al bucle
 		if (strcmp(buf,"\n") == 0){
 		printf("msh>");
 		continue;
@@ -40,12 +46,35 @@ int main(void){
 
 		//Asignación de variables
 		numcomandos = line->ncommands;
-		input = open(line->redirect_input, O_RDONLY);
-		output = open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600);
-		error = open(line->redirect_error, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+		if (line->redirect_input != NULL){
+			input = open(line->redirect_input, O_RDONLY);
+			if (input == -1){
+				fprintf(stderr, "Error al abrir la redirección de entrada. \n");
+				exit(1);
+			}
+		}
+		if (line->redirect_output != NULL){
+			output = open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+			if (output == -1){
+				fprintf(stderr, "Error al abrir la redirección de salida. \n");
+				exit(1);
+			}
+		}
+		if (line->redirect_error != NULL){
+			error = open(line->redirect_error, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+			if (error == -1){
+				fprintf(stderr, "Error al abrir la redirección de error. \n");
+				exit(1);
+			}
+		}
 
 		//CD
-		if (strcmp(line->commands[0].argv[0],"cd") == 0) cd(line->commands[0].argv[1]);
+		if (strcmp(line->commands[0].argv[0],"cd") == 0) err = cd(line->commands[0].argv[1]);
+		if (err == 1){
+			fprintf(stderr, "El directorio \"%s\" no existe. \n", line->commands[0].argv[1]);
+			printf("msh>");
+			continue;
+		}
 
 		// UN COMANDO
 		if (numcomandos == 1){
@@ -59,7 +88,7 @@ int main(void){
 				execvp(line->commands[0].filename, line->commands[0].argv);
 				exit(1);
 			} else waitpid(pidunico,NULL,0);
-		
+
 		//MÁS DE UN COMANDO
 		} else {
 
@@ -71,7 +100,12 @@ int main(void){
 			pid = (pid_t *) malloc ((numcomandos-1) * sizeof(pid_t));
 
 			//Creación de pipes
-			for (i = 0; i < numcomandos-1; i++) pipe(pipes[i]);
+			for (i = 0; i < numcomandos-1; i++){
+				err = pipe(pipes[i]);
+				if (err < 0){
+					fprintf(stderr, "Error al crear el pipe %s. \n", strerror(errno));
+				}
+			}
 
 			pid[0] = fork();
 			if (pid[0] == 0){ //Primer hijo
@@ -87,7 +121,7 @@ int main(void){
 				exit(1);
 			} else {
 				if (numcomandos > 2){
-					for (i = 0; i < numcomandos-2; i++){ //Hijos del medio
+					for (i = 0; i < numcomandos-2; i++){ //Hijos de en medio
 						pid[i+1] = fork();
 						if (pid[i+1] == 0){
 							for (j = 0; j < i; j++){
@@ -98,7 +132,7 @@ int main(void){
 							close(pipes[i][1]);
 							close(pipes[i+1][0]);
 							dup2(pipes[i+1][1], 1);
-							for (j = i+2; j <= numcomandos-2; j++){ //Borrar el = si no funciona
+							for (j = i+2; j <= numcomandos-2; j++){
 								close(pipes[j][0]);
 								close(pipes[j][1]);
 							}
@@ -122,14 +156,12 @@ int main(void){
 
 					execv(line->commands[numcomandos-1].filename, line->commands[numcomandos-1].argv);
 					exit(1);
-				} else { //padre
+				} else { //Padre
 					for (i = 0; i < numcomandos-1; i++){
 						close(pipes[i][0]);
 						close(pipes[i][1]);
 					}
 					for (i = 0; i < numcomandos; i++) waitpid(pid[i], NULL, 0); //Espera a todos los hijos
-					
-				
 				}
 			}
 		 }
