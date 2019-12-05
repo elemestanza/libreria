@@ -13,6 +13,8 @@ void cd(char *dir){
 	else chdir(dir);
 }
 
+
+
 int main(void){
 
     	//Declaración de variables
@@ -23,11 +25,18 @@ int main(void){
         int **pipes;
         pid_t *pid;
 
+
     	printf("msh> ");
     	while (fgets(buf, 1024, stdin)){
         	line = tokenize(buf);
 
-        	if (line == NULL) printf("\n");
+	
+
+        	//if (line == NULL) continue;
+		if (strcmp(buf,"\n") == 0){
+		printf("msh>");
+		continue;
+		}
 
 		//Asignación de variables
 		numcomandos = line->ncommands;
@@ -47,10 +56,10 @@ int main(void){
 				if (line->redirect_output != NULL) dup2(output, 1); //Redirección de salida
 				if (line->redirect_error != NULL) dup2(error, 2); //Redirección de error
 
-				execv(line->commands[0].filename, line->commands[0].argv);
+				execvp(line->commands[0].filename, line->commands[0].argv);
 				exit(1);
-			} else waitpid(pidunico, NULL, 0);
-
+			} else waitpid(pidunico,NULL,0);
+		
 		//MÁS DE UN COMANDO
 		} else {
 
@@ -78,26 +87,27 @@ int main(void){
 				exit(1);
 			} else {
 				if (numcomandos > 2){
-				for (i = 0; i < numcomandos-2; i++){ //Hijos del medio
-					pid[i+1] = fork();
-					if (pid[i+1] == 0){
-						for (j = 0; j < i; j++){
-							close(pipes[j][0]);
-							close(pipes[j][1]);
-						}
-						dup2(pipes[i][0], 0);
-						close(pipes[i][1]);
-						close(pipes[i+1][0]);
-						dup2(pipes[i+1][1], 1);
-						for (j = i+2; j <= numcomandos-2; j++){ //Borrar el = si no funciona
-							close(pipes[j][0]);
-							close(pipes[j][1]);
-						}
+					for (i = 0; i < numcomandos-2; i++){ //Hijos del medio
+						pid[i+1] = fork();
+						if (pid[i+1] == 0){
+							for (j = 0; j < i; j++){
+								close(pipes[j][0]);
+								close(pipes[j][1]);
+							}
+							dup2(pipes[i][0], 0);
+							close(pipes[i][1]);
+							close(pipes[i+1][0]);
+							dup2(pipes[i+1][1], 1);
+							for (j = i+2; j <= numcomandos-2; j++){ //Borrar el = si no funciona
+								close(pipes[j][0]);
+								close(pipes[j][1]);
+							}
 
-						execv(line->commands[i+1].filename, line->commands[i+1].argv);
-						exit(1);
+							execv(line->commands[i+1].filename, line->commands[i+1].argv);
+							exit(1);
+						}
 					}
-				}}
+				}
 				pid[numcomandos-2] = fork();
 				if (pid[numcomandos-2] == 0){ //Último hijo
 					for (i = 0; i < numcomandos-2; i++){
@@ -118,9 +128,11 @@ int main(void){
 						close(pipes[i][1]);
 					}
 					for (i = 0; i < numcomandos; i++) waitpid(pid[i], NULL, 0); //Espera a todos los hijos
+					
+				
 				}
 			}
-		}
+		 }
 		printf("msh> ");
 	}
 	for (i = 0; i < numcomandos-1; i++) free(pipes[i]);
