@@ -21,8 +21,6 @@ int cd(char *dir){
 	return 0;
 }
 
-
-
 int main(void){
 
     	//Declaración de variables
@@ -33,6 +31,15 @@ int main(void){
         int **pipes;
         pid_t *pid;
 
+	//utilizamos  sigaction handler para controlar los procesos en background
+	struct sigaction action;
+	action.sa_handler = SIG_IGN; // definir el handler de SIGCHLD como SIG_IGN elimina el proceso zombie
+	sigemptyset(&action.sa_mask);
+	action.sa_flags = 0;
+	if (sigaction( SIGCHLD, &action, 0) == -1){
+	perror(0);
+	exit(1);
+	}
 
     	printf("msh> "); //Prompt
     	while (fgets(buf, 1024, stdin)){
@@ -85,10 +92,14 @@ int main(void){
 				if (line->redirect_output != NULL) dup2(output, 1); //Redirección de salida
 				if (line->redirect_error != NULL) dup2(error, 2); //Redirección de error
 
+				if (line->background == 0){
+					sigaction(SIGCHLD, &action,  0);
+				}
 				execvp(line->commands[0].filename, line->commands[0].argv);
 				exit(1);
-			} else waitpid(pidunico,NULL,0);
-
+			} else{
+				if(line->background == 0) waitpid(pidunico,NULL,0);
+			}
 		//MÁS DE UN COMANDO
 		} else {
 
@@ -117,6 +128,9 @@ int main(void){
 				}
 				if (line->redirect_input != NULL) dup2(input, 0); //Redirección de entrada
 
+				if (line->background == 0){
+	                                sigaction(SIGCHLD, &action,  0);
+                                }
 				execv(line->commands[0].filename, line->commands[0].argv);
 				exit(1);
 			} else {
@@ -137,6 +151,9 @@ int main(void){
 								close(pipes[j][1]);
 							}
 
+							if (line->background == 0){
+                                        			sigaction(SIGCHLD, &action,  0);
+                                			}
 							execv(line->commands[i+1].filename, line->commands[i+1].argv);
 							exit(1);
 						}
@@ -154,6 +171,9 @@ int main(void){
 					if (line->redirect_output != NULL) dup2(output, 1); //Redirección de salida
 					if (line->redirect_error != NULL) dup2(error, 2); //Redirección de error
 
+					if (line->background == 0){
+                	                        sigaction(SIGCHLD, &action,  0);
+                                        }
 					execv(line->commands[numcomandos-1].filename, line->commands[numcomandos-1].argv);
 					exit(1);
 				} else { //Padre
@@ -161,7 +181,10 @@ int main(void){
 						close(pipes[i][0]);
 						close(pipes[i][1]);
 					}
-					for (i = 0; i < numcomandos; i++) waitpid(pid[i], NULL, 0); //Espera a todos los hijos
+
+					if(line->background == 0){
+						for (i = 0; i < numcomandos; i++) waitpid(pid[i], NULL, 0); //Espera a todos los hijos
+					}
 				}
 			}
 		 }
